@@ -1,6 +1,12 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import sys
+
+# Ensure the root directory is in python path so it can read 'src'
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.predict import predict
 
 st.set_page_config(
     page_title="SynapseAnomalX",
@@ -9,14 +15,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS
+# CSS Styling Layout
 st.markdown("""
     <style>
      @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
     h1 {
         font-family: 'Dancing Script', cursive !important;
     }
-    /* Main background */
     .stApp {
         background-color: #0b3f80;
         color: #0B0F19;
@@ -24,37 +29,23 @@ st.markdown("""
     [data-testid="stSidebarCollapseButton"] {
         visibility: hidden !important;
     } 
-    /* Sidebar */
     [data-testid="stSidebar"] {
         background-color: #161C2C !important;
         border-right: 1px solid #4F46E5;
     }
-    [data-testid="stSidebarCollapseButton"] {
-        color: #00D2C4 !important;
-        background-color: #161C2C !important;
-    }
-    [data-testid="stSidebarCollapseButton"] svg {
-        fill: #00D2C4 !important;
-        stroke: #00D2C4 !important;
-    }
-    /* Hide deploy button and top bar */
     header {
         visibility: hidden !important;
     }
-    /* Remove top padding */
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
     }
-    /* Headers */
     h1, h2, h3, h4 {
         color: #00D2C4 !important;
     }
-    /* Body text */
     p, li, label {
         color: #E2E8F0 !important;
     }
-    /* Metric cards */
     .metric-card {
         background-color: #161C2C;
         border: 1px solid #4F46E5;
@@ -63,40 +54,23 @@ st.markdown("""
         text-align: center;
         color: #00D2C4;
     }
-    /* Buttons */
-    .stButton>button {
-        background-color: #4F46E5;
-        color: #E2E8F0;
-        border-radius: 8px;
-        font-weight: bold;
-        width: 100%;
-        border: none;
-    }
-    .stButton>button:hover {
-        background-color: #00D2C4;
-        color: #0B0F19;
-    }
-    /* File uploader */
     .stFileUploader > div {
         background-color: #161C2C !important;
         border: 1px solid #4F46E5 !important;
         border-radius: 10px !important;
     }
-
     section[data-testid="stFileUploadDropzone"] {
         background-color: #0B0F19 !important;
         color: #E2E8F0 !important;
     }
-    /* Divider */
     hr {
         border-color: #4F46E5 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar
+# Sidebar UI
 with st.sidebar:
-
     st.markdown("## 🧠 SynapseAnomalX")
     st.markdown("---")
     st.markdown("### About")
@@ -109,12 +83,13 @@ with st.sidebar:
     3. ⚡ Anomaly score generated
     4. ✅ Result displayed
     """)
-# Main
+
+# Main Title Headers
 st.markdown("# 🧠 SynapseAnomalX")
 st.markdown("### Brain-Inspired Anomaly Detection for Cognitive Decline")
 st.markdown("---")
 
-# Metrics row
+# Global Metrics Summary Cards
 col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown('<div class="metric-card"><h3>35+</h3><p>Healthy Scans Trained</p></div>', unsafe_allow_html=True)
@@ -125,14 +100,19 @@ with col3:
 
 st.markdown("---")
 
-# Upload
+# File Upload Processing Section
 st.markdown("### 📤 Upload MRI Slice")
 uploaded = st.file_uploader("Upload an MRI scan (JPG/PNG)", type=['jpg', 'jpeg', 'png'])
 
 if uploaded:
     from PIL import Image
-    slc = np.array(Image.open(uploaded).convert('L').resize((128, 128))) / 255.0
+    # Process image to match exactly what src/predict.py expects
+    img_pil = Image.open(uploaded).convert('L').resize((128, 128))
+    slc = np.array(img_pil).astype(np.float32) / 255.0
 
+    # Run actual model prediction pipeline
+    results = predict(slc)
+    
     col1, col2 = st.columns(2)
 
     with col1:
@@ -145,24 +125,37 @@ if uploaded:
 
     with col2:
         st.markdown("### ⚡ Analysis")
-        st.error("⚠️ Anomaly Detected — Possible Cognitive Decline Pattern Found")
-        st.markdown("#### Anomaly Score")
-        st.progress(0.87)
-        st.caption("Score: -0.872 — Deviates significantly from healthy brain patterns")
-        st.markdown("#### Confidence")
-        st.progress(0.91)
-        st.caption("Confidence: 91% — High certainty of anomalous pattern")
-        st.markdown("#### Brain Region Risk")
-        st.markdown("""
+        
+        # Display dynamically based on whether actual model flagged an anomaly
+        if results["is_anomaly"]:
+            st.error(f"⚠️ Anomaly Detected — Possible {results['label']} Pattern Found")
+        else:
+            st.success(f"✅ Normal Brain Pattern Verified ({results['label']})")
+            
+        st.markdown("#### Anomaly Deviation Metric")
+        # Normalize score between 0.0 and 1.0 for the progress bar rendering safely
+        progress_val = min(max(float(results["anomaly_score"]) / 5.0, 0.0), 1.0)
+        st.progress(progress_val)
+        st.caption(f"Calculated Z-Score: {results['anomaly_score']} — Spike Mean: {results['spike_mean']}")
+        
+        st.markdown("#### Diagnostic Status Classification")
+        st.info(f"Target Diagnostic Category: **{results['label']}** (Class Code: {results['prediction']})")
+        
+        st.markdown("#### Brain Region Vulnerability Risk")
+        # Dynamically color map risk categories based on classification
+        hip_status = "🔴 High Risk" if results["prediction"] >= 2 else "🟠 Moderate Risk" if results["prediction"] == 1 else "🟢 Normal"
+        tem_status = "🔴 High Risk" if results["prediction"] == 3 else "🟠 Moderate Risk" if results["prediction"] >= 1 else "🟢 Normal"
+        
+        st.markdown(f"""
         <style>
-        table { font-size: 18px !important; color: #FFFFFF !important; width: 100%; }
-        th { color: #FFFFFF !important; font-size: 20px !important; }
-        td { color: #FFFFFF !important; }
+        table {{ font-size: 18px !important; color: #FFFFFF !important; width: 100%; }}
+        th {{ color: #FFFFFF !important; font-size: 20px !important; }}
+        td {{ color: #FFFFFF !important; }}
         </style>
         | Region | Status |
         |--------|--------|
-        | Hippocampus | 🔴 High Risk |
-        | Temporal Lobe | 🟠 Moderate Risk |
+        | Hippocampus | {hip_status} |
+        | Temporal Lobe | {tem_status} |
         | Frontal Cortex | 🟢 Normal |
         """, unsafe_allow_html=True)
 
