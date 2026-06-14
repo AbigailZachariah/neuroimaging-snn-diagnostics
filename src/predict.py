@@ -1,49 +1,46 @@
-"""
-Anomaly detection for the SNN inference pipeline.
+import numpy as np
+import joblib
+from src.encoder import rate_encode
+from src.anomaly import anomaly_score, is_anomaly
 
-Instead of hardcoded magic numbers, thresholds are derived from the
-actual spike feature distribution computed during training and saved
-to models/encoding_stats.npy.
+LABELS = {
+    0: "NonDemented",
+    1: "VeryMildDemented",
+    2: "MildDemented",
+    3: "ModerateDemented"
+}
 
-A sample is flagged as anomalous if its mean spike activity deviates
-more than Z_THRESHOLD standard deviations from the training mean.
-This catches:
-  - Non-MRI images fed to the model
-  - Corrupted or blank scans
-  - Images with very different contrast/brightness profiles
-"""
+model = joblib.load("models/alzheimer_model.joblib")
 
-# How many standard deviations away counts as anomalous.
-# 2.5 keeps ~99% of real MRI scans as non-anomalous (tighter than 3-sigma).
-Z_THRESHOLD = 2.5
-
-
-def anomaly_score(spike_mean: float, training_mean: float, training_std: float) -> float:
-    """
-    Compute a z-score-based anomaly score.
-
-    Args:
-        spike_mean: mean spike activity of the current image's encoded features
-        training_mean: mean spike activity seen across the training set
-        training_std: std of spike activity across the training set
-
-    Returns:
-        float: z-score (how many std devs away from training distribution)
-    """
-    if training_std == 0:
-        return 0.0
-    return abs(spike_mean - training_mean) / training_std
+try:
+    stats = np.load("models/encoding_stats.npy")
+    ENCODING_MEAN, ENCODING_STD = float(stats[0]), float(stats[1])
+except FileNotFoundError:
+    ENCODING_MEAN, ENCODING_STD = 5.0, 2.0
+    print("Warning: encoding_stats.npy not found. Using default anomaly thresholds.")
 
 
-def is_anomaly(score: float, threshold: float = Z_THRESHOLD) -> bool:
-    """
-    Returns True if the anomaly score exceeds the threshold.
+def predict(image: np.ndarray) -> dict:
+    if image.dtype != np.float32:
+        image = image.astype(np.float32)
+    if image.max() > 1.0:
+        image = image / 255.0
 
-    Args:
-        score: z-score from anomaly_score()
-        threshold: number of std deviations to flag as anomalous (default 2.5)
+    spikes = rate_encode(image)
+    features = spikes.sum(axis=0)
+    flat_features = features.flatten()
 
-    Returns:
-        bool
-    """
-    return score > threshold
+    prediction = model.predict(flat_features.reshape(1, -1))[0]
+    label = LABELS[prediction]
+
+    spike_mean = float(flat_features.mean())
+    score = anomaly_score(spike_mean, ENCODING_MEAN, ENCODING_STD)
+    flagged = is_anomaly(score)
+
+    return {
+        "prediction": int(prediction),
+        "label": label,
+        "anomaly_score": round(score, 4),
+        "is_anomaly": flagged,
+        "spike_mean": round(spike_mean, 4)
+    }

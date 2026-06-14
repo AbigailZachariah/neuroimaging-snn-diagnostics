@@ -1,15 +1,11 @@
 import numpy as np
 
-THRESHOLD = 8.0
+Z_THRESHOLD = 2.5
 
+def anomaly_score(spike_mean: float, training_mean: float, training_std: float) -> float:
+    if training_std == 0:
+        return 0.0
+    return abs(spike_mean - training_mean) / training_std
 
-def anomaly_score(features):
-    mean_activity = np.mean(features)
-
-    expected = 10.0
-
-    return abs(mean_activity - expected)
-
-
-def is_anomaly(score):
-    return score > THRESHOLD
+def is_anomaly(score: float, threshold: float = Z_THRESHOLD) -> bool:
+    return score > threshold
