@@ -27,12 +27,9 @@ def predict(image_slice):
         "is_anomaly": bool(prediction[0]),
         "label": "MildDemented" if prediction[0] else "NonDemented"
     }
-
-
-2. Frontend Reactive UI (frontend/app.py)
+    
+    2. Frontend Reactive UI (frontend/app.py)
 Streamlit interface rendering the metrics pipeline synchronously using layout hooks:
-
-
 import streamlit as st
 from src.predict import predict
 
@@ -46,15 +43,12 @@ if uploaded_file is not None:
         st.error(f"⚠️ Anomaly Detected: {results['label']}")
     else:
         st.success(f"✅ Normal Brain Pattern Verified")
+        
+        Installation & Execution
+Activate virtual environment & install libraries:
 
-Installation & Execution
-1.Activate virtual environment & install libraries:
 pip install streamlit numpy scikit-learn joblib opencv-python pillow
 
-2.Boot up the centralized app console:
-streamlit run frontend/app.py
-
-
-
+Boot up the centralized app console:streamlit run frontend/app.py
 
 
