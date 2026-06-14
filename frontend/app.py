@@ -127,11 +127,11 @@ st.markdown("---")
 
 # Upload
 st.markdown("### 📤 Upload MRI Slice")
-uploaded = st.file_uploader("Upload an MRI slice (.npy file)", type=['npy'])
+uploaded = st.file_uploader("Upload an MRI scan (JPG/PNG)", type=['jpg', 'jpeg', 'png'])
 
 if uploaded:
-    data = np.load(uploaded, allow_pickle=True).item()
-    slc = data['slice']
+    from PIL import Image
+    slc = np.array(Image.open(uploaded).convert('L').resize((128, 128))) / 255.0
 
     col1, col2 = st.columns(2)
 
@@ -167,4 +167,4 @@ if uploaded:
         """, unsafe_allow_html=True)
 
 else:
-    st.warning("👆 Upload an MRI slice (.npy file) to begin analysis")
+    st.warning("👆 Upload an MRI slice (.jpg/.png file) to begin analysis")
