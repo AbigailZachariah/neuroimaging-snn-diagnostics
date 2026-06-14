@@ -1,54 +1,34 @@
-# 🧠 SynapseAnomalX: AI Neuroimaging Diagnostics
+# 🧠 SynapseAnomalX: Brain-Inspired Anomaly Detection
 
-An advanced neuroimaging pipeline using Spiking Neural Networks (SNNs) and unsupervised statistical boundaries to detect cognitive decline patterns from MRI slices.
+SynapseAnomalX is an advanced neuroimaging diagnostic dashboard that leverages Spiking Neural Networks (SNNs) and unsupervised feature extraction to detect early-stage cognitive decline patterns from MRI structural scans.
 
 ---
 
-## 📂 Core Architecture & Embedded Code Structure
+## 🚀 Core Innovation & Tech Stack
 
-### 1. Backend Core Engine (`src/predict.py`)
-This core module orchestrates image loading, feature scaling, and triggers the anomaly boundaries using the trained joblib model checkpoints:
+* *Biologically Inspired Architecture:* Uses Spiking Neural Networks (SNN) combined with STDP-inspired behavior to trace structural deviation.
+* *Unsupervised Anomaly Scoring:* Trained exclusively on healthy brain data (~35 scans) to learn normal baseline pathways, utilizing Z-Score thresholds ($Z = 2.5$) to isolate anomalous cognitive decline.
+* *Dynamic Analytics Engine:* Processes incoming gray-scale MRI slices on-the-fly and translates spike train frequencies into dynamic frontend warning states.
 
-```python
-import os
-import joblib
-import numpy as np
+---
 
-def predict(image_slice):
-    # Load unsupervised model weights
-    model_path = "models/alzheimer_model.joblib"
-    model = joblib.load(model_path)
-    
-    # Extract features & evaluate anomaly status
-    features = np.mean(image_slice) # Framework statistical baseline
-    prediction = model.predict([[features]])
-    
-    return {
-        "is_anomaly": bool(prediction[0]),
-        "label": "MildDemented" if prediction[0] else "NonDemented"
-    }
-    
-    2. Frontend Reactive UI (frontend/app.py)
-Streamlit interface rendering the metrics pipeline synchronously using layout hooks:
-import streamlit as st
-from src.predict import predict
+## 📂 Project Repository Structure
 
-st.title("SynapseAnomalX Dashboard")
-uploaded_file = st.file_uploader("Upload MRI Slice (.jpg/.png)")
+* src/ — Core algorithmic backend execution pipeline:
+  * predict.py — Pipeline coordinator loading model weights and returning calculated anomaly predictions.
+  * anomaly.py — Mathematical evaluation script checking features against $Z$-threshold limits.
+  * dataset.py — Lazy loading PyTorch dataset component with live image augmentation handlers.
+* frontend/ — System presentation layout:
+  * app.py — Deeply styled Streamlit interactive frontend dashboard reading from the src inference module.
+* models/ — Pre-trained parameters, scaling coefficients, and statistical arrays (alzheimer_model.joblib).
 
-if uploaded_file is not None:
-    # Process image matrix and compute inference instantly
-    results = predict(uploaded_file)
-    if results["is_anomaly"]:
-        st.error(f"⚠️ Anomaly Detected: {results['label']}")
-    else:
-        st.success(f"✅ Normal Brain Pattern Verified")
-        
-        Installation & Execution
-Activate virtual environment & install libraries:
+---
 
-pip install streamlit numpy scikit-learn joblib opencv-python pillow
+## 🛠️ Installation & Local Execution
 
-Boot up the centralized app console:streamlit run frontend/app.py
+Follow these step-by-step instructions to boot up the diagnostics workspace locally:
 
-
+### 1. Set Up Environment & Dependencies
+Ensure your python virtual workspace (venv) is activated, then run:
+```bash
+pip install streamlit numpy matplotlib scikit-learn joblib opencv-python pillow torch
